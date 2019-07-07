@@ -1,0 +1,317 @@
+##
+## @file
+## @brief Cron Developer Makefile.
+## @author James Humphrey (humphreyj@somnisoft.com)
+##
+## This software has been placed into the public domain using CC0.
+##
+.PHONY: all clean doc test test_afl test_unit
+.SUFFIXES:
+
+BDIR = build
+INSTALL_PREFIX = /usr/local
+
+AFL_FUZZ = afl-fuzz -m none
+
+CWARN += -Waggregate-return
+CWARN += -Wall
+CWARN += -Wbad-function-cast
+CWARN += -Wcast-align
+CWARN += -Wcast-qual
+CWARN += -Wdeclaration-after-statement
+CWARN += -Wdisabled-optimization
+CWARN += -Werror
+CWARN += -Wextra
+CWARN += -Wfatal-errors
+CWARN += -Wfloat-equal
+CWARN += -Wformat=2
+CWARN += -Wframe-larger-than=5000
+CWARN += -Winit-self
+CWARN += -Winline
+CWARN += -Winvalid-pch
+CWARN += -Wlarger-than=111000
+CWARN += -Wlong-long
+CWARN += -Wmissing-declarations
+CWARN += -Wmissing-include-dirs
+CWARN += -Wmissing-prototypes
+CWARN += -Wnested-externs
+CWARN += -Wold-style-definition
+CWARN += -Wpacked
+CWARN += -Wpedantic
+CWARN += -pedantic-errors
+CWARN += -Wredundant-decls
+CWARN += -Wshadow
+CWARN += -Wstack-protector
+CWARN += -Wstrict-aliasing
+CWARN += -Wstrict-prototypes
+CWARN += -Wswitch-default
+CWARN += -Wswitch-enum
+CWARN += -Wundef
+CWARN += -Wuninitialized
+CWARN += -Wunknown-pragmas
+CWARN += -Wunused-parameter
+CWARN += -Wvla
+CWARN += -Wwrite-strings
+
+CWARN.gcc   += -Wdouble-promotion
+CWARN.gcc   += -Wjump-misses-init
+CWARN.gcc   += -Wlogical-op
+CWARN.gcc   += -Wnormalized=nfkc
+CWARN.gcc   += -Wstack-usage=5000
+CWARN.gcc   += -Wsync-nand
+CWARN.gcc   += -Wtrampolines
+CWARN.gcc   += -Wunsafe-loop-optimizations
+CWARN.gcc   += -Wunsuffixed-float-constants
+CWARN.gcc   += -Wvector-operation-performance
+
+CWARN.clang += $(CWARN)
+CWARN.clang += -Weverything
+CWARN.clang += -fcomment-block-commands=retval
+CWARN.clang += -Wno-format-nonliteral
+CWARN.clang += -Wno-disabled-macro-expansion
+
+CFLAGS += $(CWARN)
+CFLAGS += -fstack-protector-all
+CFLAGS += -fstrict-overflow
+CFLAGS += -std=c89
+CFLAGS += -MD
+CFLAGS += -D_POSIX_C_SOURCE=200809
+CFLAGS += -D_GNU_SOURCE
+
+CFLAGS.debug   += -g3
+CFLAGS.debug   += -fprofile-arcs -ftest-coverage
+CFLAGS.debug   += -DCRON_TEST
+CFLAGS.debug   += $(CWARN.gcc)
+
+CFLAGS.clang   += $(CFLAGS)
+CFLAGS.clang   += $(CWARN.clang)
+CFLAGS.clang   += -DCRON_TEST
+CFLAGS.clang   += -fsanitize=undefined
+CFLAGS.clang   += -fsanitize=address
+
+CFLAGS.release += -O3
+
+CFLAGS.afl     += -DCRON_NO_MAIN
+CFLAGS.afl     += -DCRON_TEST
+CFLAGS.afl     += -fsanitize=address
+
+LFLAGS.afl     += -fsanitize=undefined
+LFLAGS.afl     += -fsanitize=address
+LFLAGS.afl     += -lasan
+
+VFLAGS += -q
+VFLAGS += --error-exitcode=1
+VFLAGS += --gen-suppressions=yes
+VFLAGS += --num-callers=40
+
+VFLAGS_MEMCHECK += --tool=memcheck
+VFLAGS_MEMCHECK += --expensive-definedness-checks=yes
+VFLAGS_MEMCHECK += --track-origins=yes
+VFLAGS_MEMCHECK += --leak-check=full
+VFLAGS_MEMCHECK += --leak-resolution=high
+VALGRIND_MEMCHECK = valgrind $(VFLAGS) $(VFLAGS_MEMCHECK)
+
+GCOV    = gcov -b $(BDIR)/debug/crond.o $(BDIR)/debug/crontab.o $(BDIR)/debug/cron.o
+LCOV    = lcov -o $(BDIR)/debug/lcov.info -c -d $(BDIR)/debug
+GENHTML = genhtml -o $(BDIR)/debug/lcov_html $(BDIR)/debug/lcov.info
+
+CC       = gcc
+CC_AFL   = afl-gcc
+CC.clang = clang
+
+AR.c.debug          = $(AR) -c -r $@ $^
+AR.c.release        = $(AR) -c -r $@ $^
+COMPILE.c.afl       = $(CC_AFL) $(CFLAGS.afl) -c -o $@ $<
+COMPILE.c.debug     = $(CC) $(CFLAGS) $(CFLAGS.debug) -c -o $@ $<
+COMPILE.c.release   = $(CC) $(CFLAGS) $(CFLAGS.release) -c -o $@ $<
+COMPILE.c.clang     = $(CC.clang) $(CFLAGS.clang) -c -o $@ $<
+LINK.c.afl          = $(CC_AFL) $(LFLAGS.afl) -o $@ $^
+LINK.c.debug        = $(CC) $(CFLAGS) $(CFLAGS.debug) -o $@ $^
+LINK.c.release      = $(CC) $(CFLAGS) $(CFLAGS.release) -o $@ $^
+LINK.c.clang        = $(CC.clang) $(LFLAGS) $(CFLAGS.clang) -o $@ $^
+MKDIR               = mkdir -p $@
+CP                  = cp $< $@
+
+SCAN_BUILD_CROND = scan-build -maxloop 100                \
+                              -o $(BDIR)/scan-build-crond \
+                              --status-bugs               \
+                   clang $(CFLAGS.clang)                  \
+                         -o $(BDIR)/debug/scan-build-crond src/crond.c src/cron.c test/seams.c
+SCAN_BUILD_CRONTAB = scan-build -maxloop 100                  \
+                                -o $(BDIR)/scan-build-crontab \
+                                --status-bugs                 \
+                     clang $(CFLAGS.clang)                    \
+                           -o $(BDIR)/debug/scan-build-crontab src/crontab.c src/cron.c test/seams.c
+
+all: $(BDIR)/debug/libcrond.a    \
+     $(BDIR)/debug/crond         \
+     $(BDIR)/debug/crontab       \
+     $(BDIR)/debug/test          \
+     $(BDIR)/debug/clang_test    \
+     $(BDIR)/debug/fuzz-driver   \
+     $(BDIR)/release/crond       \
+     $(BDIR)/release/crontab     \
+     $(BDIR)/doc/html/index.html
+
+clean:
+	-sudo /bin/umount $(BDIR)
+	rm -rf $(BDIR)
+
+doc $(BDIR)/doc/html/index.html: src/cron.c      \
+	                               src/crond.c     \
+	                               src/crontab.c   \
+	                               test/seams.h    \
+	                               test/seams.c    \
+	                               test/test.h     \
+	                               test/test.c     \
+	                               $(BDIR)/doc.cfg
+	doxygen $(BDIR)/doc.cfg
+
+$(BDIR)/doc.cfg: | $(BDIR)
+	doxygen -s -g $@
+	sed -i -e 's/PROJECT_NAME .*/PROJECT_NAME="cron"/'                      \
+	       -e 's/PROJECT_BRIEF .*/PROJECT_BRIEF="Crontab and Cron Daemon"/' \
+	       -e 's/OUTPUT_DIRECTORY .*/OUTPUT_DIRECTORY="build\/doc"/'        \
+	       -e 's/OPTIMIZE_OUTPUT_FOR_C .*/OPTIMIZE_OUTPUT_FOR_C=YES/'       \
+	       -e 's/EXTRACT_PRIVATE .*/EXTRACT_PRIVATE=YES/'                   \
+	       -e 's/EXTRACT_STATIC .*/EXTRACT_STATIC=YES/'                     \
+	       -e 's/EXTRACT_LOCAL_METHODS .*/EXTRACT_LOCAL_METHODS=YES/'       \
+	       -e 's/STRICT_PROTO_MATCHING .*/STRICT_PROTO_MATCHING=YES/'       \
+	       -e 's/WARN_NO_PARAMDOC .*/WARN_NO_PARAMDOC=YES/'                 \
+	       -e 's/WARN_AS_ERROR .*/WARN_AS_ERROR=YES/'                       \
+	       -e 's/INPUT .*/INPUT=src\/crond.c               \\\
+	                            src\/crond.h               \\\
+	                            src\/crontab.c             \\\
+	                            src\/cron.h                \\\
+	                            src\/cron.c                \\\
+	                            test\/fuzz-driver.c        \\\
+	                            test\/seams.h              \\\
+	                            test\/seams.c              \\\
+	                            test\/test.h               \\\
+	                            test\/test.c/'                              \
+	       -e 's/FILE_PATTERNS .*/FILE_PATTERNS=/'                          \
+	       -e 's/SOURCE_BROWSER .*/SOURCE_BROWSER=YES/'                     \
+	       -e 's/INLINE_SOURCES .*/INLINE_SOURCES=YES/'                     \
+	       -e 's/REFERENCED_BY_RELATION .*/REFERENCED_BY_RELATION=YES/'     \
+	       -e 's/REFERENCES_RELATION .*/REFERENCES_RELATION=YES/'           \
+	       -e 's/HTML_DYNAMIC_SECTIONS .*/HTML_DYNAMIC_SECTIONS=YES/'       \
+	       -e 's/TOC_EXPAND .*/TOC_EXPAND=YES/'                             \
+	       -e 's/GENERATE_TREEVIEW .*/GENERATE_TREEVIEW=YES/'               \
+	       -e 's/GENERATE_LATEX .*/GENERATE_LATEX=NO/'                      \
+	       -e 's/PREDEFINED .*/PREDEFINED=CRON_TEST/'                       \
+	       -e 's/UML_LOOK .*/UML_LOOK=YES/'                                 \
+	       -e 's/UML_LIMIT_NUM_FIELDS .*/UML_LIMIT_NUM_FIELDS=0/'           \
+	       -e 's/TEMPLATE_RELATIONS .*/TEMPLATE_RELATIONS=YES/'             \
+	       -e 's/CALL_GRAPH .*/CALL_GRAPH=YES/'                             \
+	       -e 's/CALLER_GRAPH .*/CALLER_GRAPH=YES/'                         \
+	       -e 's/DOT_MULTI_TARGETS .*/DOT_MULTI_TARGETS=YES/' $@
+
+test: all
+	$(SCAN_BUILD_CROND)
+	$(SCAN_BUILD_CRONTAB)
+	$(VALGRIND_MEMCHECK) $(BDIR)/debug/test
+	$(BDIR)/debug/clang_test
+	$(GCOV)
+	$(LCOV)
+	$(GENHTML)
+	xdg-open $(BDIR)/debug/lcov_html/src/index.html
+
+test_afl: all
+	$(AFL_FUZZ) -i test/fuzz-test-cases            \
+              -o $(BDIR)/debug/afl-fuzz-findings \
+                 $(BDIR)/debug/fuzz-driver
+
+test_unit: all
+	$(VALGRIND_MEMCHECK) $(BDIR)/debug/test -q
+
+-include $(shell find $(BDIR)/ -name "*.d" 2> /dev/null)
+
+$(BDIR)/release: | $(BDIR)
+	$(MKDIR)
+
+$(BDIR)/debug: | $(BDIR)
+	$(MKDIR)
+
+$(BDIR):
+	$(MKDIR)
+	sudo /bin/mount -o size=200M -t tmpfs none $(BDIR)
+
+$(BDIR)/debug/libcrond.a: $(BDIR)/debug/crond_no_main.o   \
+                          $(BDIR)/debug/crontab_no_main.o \
+                          $(BDIR)/debug/cron.o
+	$(AR.c.debug)
+$(BDIR)/debug/crond: $(BDIR)/debug/crond.o  \
+                     $(BDIR)/debug/cron.o \
+                     $(BDIR)/debug/seams.o
+	$(LINK.c.debug)
+$(BDIR)/debug/crond_no_main.o: src/crond.c | $(BDIR)/debug
+	$(COMPILE.c.debug) -DCRON_NO_MAIN
+$(BDIR)/debug/crontab_no_main.o: src/crontab.c | $(BDIR)/debug
+	$(COMPILE.c.debug) -DCRON_NO_MAIN
+$(BDIR)/debug/crond.o: src/crond.c | $(BDIR)/debug
+	$(COMPILE.c.debug)
+$(BDIR)/debug/crontab: $(BDIR)/debug/crontab.o \
+                       $(BDIR)/debug/cron.o    \
+                       $(BDIR)/debug/seams.o
+	$(LINK.c.debug) -lpthread
+$(BDIR)/debug/crontab.o: src/crontab.c | $(BDIR)/debug
+	$(COMPILE.c.debug)
+$(BDIR)/debug/cron.o: src/cron.c | $(BDIR)/debug
+	$(COMPILE.c.debug)
+
+$(BDIR)/release/crond: $(BDIR)/release/crond.o  \
+                       $(BDIR)/release/cron.o
+	$(LINK.c.release) -lpthread
+$(BDIR)/release/crond.o: src/crond.c | $(BDIR)/release
+	$(COMPILE.c.release)
+$(BDIR)/release/crontab: $(BDIR)/release/crontab.o \
+                         $(BDIR)/release/cron.o
+	$(LINK.c.release)
+$(BDIR)/release/crontab.o: src/crontab.c | $(BDIR)/release
+	$(COMPILE.c.release)
+$(BDIR)/release/cron.o: src/cron.c | $(BDIR)/release
+	$(COMPILE.c.release)
+
+$(BDIR)/debug/fuzz-driver: $(BDIR)/debug/fuzz-driver.o \
+                           $(BDIR)/debug/fuzz-cron.o   \
+                           $(BDIR)/debug/fuzz-crond.o  \
+                           $(BDIR)/debug/fuzz-seams.o
+	$(LINK.c.afl)
+$(BDIR)/debug/fuzz-driver.o: test/fuzz-driver.c | $(BDIR)/debug
+	$(COMPILE.c.afl)
+$(BDIR)/debug/fuzz-cron.o: src/cron.c | $(BDIR)/debug
+	$(COMPILE.c.afl)
+$(BDIR)/debug/fuzz-crond.o: src/crond.c | $(BDIR)/debug
+	$(COMPILE.c.afl)
+$(BDIR)/debug/fuzz-seams.o: test/seams.c | $(BDIR)/debug
+	$(COMPILE.c.afl)
+
+$(BDIR)/debug/test: $(BDIR)/debug/seams.o           \
+                    $(BDIR)/debug/crond_no_main.o   \
+                    $(BDIR)/debug/crontab_no_main.o \
+                    $(BDIR)/debug/cron.o            \
+                    $(BDIR)/debug/test.o
+	$(LINK.c.debug) -lgcov -lpthread
+
+$(BDIR)/debug/test.o: test/test.c | $(BDIR)/debug
+	$(COMPILE.c.debug)
+$(BDIR)/debug/seams.o: test/seams.c | $(BDIR)/debug
+	$(COMPILE.c.debug)
+
+$(BDIR)/debug/clang_test: $(BDIR)/debug/clang_seams.o           \
+                          $(BDIR)/debug/clang_crond_no_main.o   \
+                          $(BDIR)/debug/clang_crontab_no_main.o \
+                          $(BDIR)/debug/clang_cron.o            \
+                          $(BDIR)/debug/clang_test.o
+	$(LINK.c.clang)
+$(BDIR)/debug/clang_seams.o: test/seams.c | $(BDIR)/debug
+	$(COMPILE.c.clang)
+$(BDIR)/debug/clang_crond_no_main.o: src/crond.c | $(BDIR)/debug
+	$(COMPILE.c.clang) -DCRON_NO_MAIN
+$(BDIR)/debug/clang_crontab_no_main.o: src/crontab.c | $(BDIR)/debug
+	$(COMPILE.c.clang) -DCRON_NO_MAIN
+$(BDIR)/debug/clang_cron.o: src/cron.c | $(BDIR)/debug
+	$(COMPILE.c.clang)
+$(BDIR)/debug/clang_test.o: test/test.c | $(BDIR)/debug
+	$(COMPILE.c.clang)
+

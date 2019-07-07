@@ -1,0 +1,8 @@
+*                * * * * wall 'crond job every 1 minute '
+*                * * * * sleep 30 && wall 'crond job every 1 minute on 30 second interval'
+0,10,20,30,40,50 * * * * wall 'crond job every 10 minutes'
+0                * * * * wall 'crond job every 1 hour on the hour'
+30               * * * * wall 'crond job every 1 hour on the 30 minute'
+@midnight                wall 'crond job midnight'
+@daily                   wall 'crond job daily'
+@weekly                  wall 'crond job weekly'

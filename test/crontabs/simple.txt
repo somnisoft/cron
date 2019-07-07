@@ -1,0 +1,2 @@
+# Create a file, used for generic testing and error tests.
+* * * * * touch /tmp/test-cron-simple.txt

@@ -1,0 +1,9 @@
+1 1 1 1 1 test/touch-stdin.sh%/tmp/test-cron-stdin-1.txt
+
+2 2 2 2 2 test/touch-stdin.sh%/tmp/test-cron-stdin-1.txt%/tmp/test-cron-stdin-2.txt
+
+3 3 3 3 3 test/touch-stdin.sh%/tmp/test-cron-stdin-1.txt%/tmp/test-cron-stdin-2.txt%/tmp/test-cron-stdin-3.txt
+
+4 4 4 4 4 test/touch-stdin.sh%/tmp/test-cron-stdin-\%\\\\.txt%/tmp/test-cron-stdin-2.txt
+
+5 5 5 5 5 test/touch-stdin.sh%/tmp/test-cron-stdin-1.txt\

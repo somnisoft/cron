@@ -1,0 +1,22 @@
+# Test the special string commands.
+
+# 0 0 1 1 *
+@yearly   touch /tmp/test-cron-yearly.txt
+@annually touch /tmp/test-cron-annually.txt
+
+# 0 0 1 * *
+@monthly  touch /tmp/test-cron-monthly.txt
+
+# 0 0 * * 0
+@weekly   touch /tmp/test-cron-weekly.txt
+
+# 0 0 * * *
+@daily    touch /tmp/test-cron-daily.txt
+@midnight touch /tmp/test-cron-midnight.txt
+
+# 0 * * * *
+@hourly   touch /tmp/test-cron-hourly.txt
+
+# Invalid special command.
+@invalid  touch /tmp/test-cron-invalid.txt
+

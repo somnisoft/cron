@@ -1,0 +1,15 @@
+0 10 2 3 4 touch /tmp/test-cron-field-1.txt
+55-99 2 3 4 5 touch /tmp/test-cron-field-8.txt
+%1 2 3 4 5 touch /tmp/test-cron-field-10.txt
+1 2 3 4 1,2,3,4,5 touch /tmp/test-cron-field-2.txt
+4 4 4 4 4 test/echo-output.sh
+* * * * * touch /tmp/test-cron-simple.txt
+@yearly   touch /tmp/test-cron-yearly.txt
+@annually touch /tmp/test-cron-annually.txt
+@monthly  touch /tmp/test-cron-monthly.txt
+@weekly   touch /tmp/test-cron-weekly.txt
+@daily    touch /tmp/test-cron-daily.txt
+@midnight touch /tmp/test-cron-midnight.txt
+@hourly   touch /tmp/test-cron-hourly.txt
+@invalid  touch /tmp/test-cron-invalid.txt
+4 4 4 4 4 test/touch-stdin.sh%/tmp/test-cron-stdin-\%\\\\.txt%/tmp/test-cron-stdin-2.txt
