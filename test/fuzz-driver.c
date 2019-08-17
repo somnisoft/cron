@@ -44,6 +44,7 @@ main(void){
   }
   buf[buflen] = '\0';
   crond_crontab_parse_line(&crond, buf);
+  free(buf);
 
   return 0;
 }
