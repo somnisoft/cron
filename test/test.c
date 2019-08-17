@@ -43,6 +43,16 @@ static char **
 g_argv;
 
 /**
+ * Print a message to STDERR before running a unit test.
+ *
+ * @param[in] description Description of test case.
+ */
+static void
+test_describe(const char *const description){
+  assert(fprintf(stderr, "%s\n", description) >= 0);
+}
+
+/**
  * Test harness for @ref si_add_size_t and @ref si_mul_size_t.
  *
  * @param[in] si_op_size  Set to @ref si_add_size_t or @ref si_mul_size_t.
@@ -668,7 +678,7 @@ test_crond_stdin_lines(void){
   assert(test_file_exists("/tmp/test-cron-stdin-1.txt") == false);
   g_test_seam_err_ctr_strdup = -1;
 
-  /* Failed to write data to child process. */
+  test_describe("failed to write data to child process");
   g_test_seam_err_force_errno = ENOMEM;
   g_test_seam_err_ctr_write = 0;
   test_crond_set_tm(1, 1, 1, 1, 1);
@@ -677,7 +687,7 @@ test_crond_stdin_lines(void){
   g_test_seam_err_ctr_write = -1;
   g_test_seam_err_force_errno = 0;
 
-  /* Simulate an interrupt during write but allow the next write to proceed. */
+  test_describe("simulate an interrupt during write but allow the next write to proceed");
   g_test_seam_err_force_errno = EINTR;
   g_test_seam_err_ctr_write = 0;
   test_crond_set_tm(1, 1, 1, 1, 1);
@@ -704,10 +714,8 @@ test_crond_mailx(void){
 
   test_crond_verify_file_create("/tmp/test-cron-echo-output.txt");
 
-  /*
-   * (1) Get username using getpwuid instead of env variable.
-   * (2) Test scenario where getpwuid does not return an entry (empty username).
-   */
+  test_describe("(1) Get username using getpwuid instead of env variable");
+  test_describe("(2) Test getpwuid does not return an entry (empty username)");
   old_env = getenv("LOGNAME");
   assert(old_env);
   assert(unsetenv("LOGNAME") == 0);
@@ -743,12 +751,12 @@ test_crond_mailx(void){
   test_crond_verify_file_create("/tmp/test-cron-echo-output.txt");
   g_test_seam_err_ctr_snprintf = -1;
 
-  /* Failed to create write pipe for mailx process. */
+  test_describe("failed to create write pipe for mailx process");
   g_test_seam_err_ctr_pipe = 2;
   test_crond_verify_file_create("/tmp/test-cron-echo-output.txt");
   g_test_seam_err_ctr_pipe = -1;
 
-  /* Failed to fork mailx process. */
+  test_describe("failed to fork mailx process");
   g_test_seam_err_ctr_fork = 3;
   test_crond_verify_file_create("/tmp/test-cron-echo-output.txt");
   g_test_seam_err_ctr_fork = -1;
@@ -785,31 +793,31 @@ static void
 test_crond_special_strings(void){
   test_crontab_add("test/crontabs/special-strings.txt", EXIT_SUCCESS);
 
-  /* @yearly / @annually -> 0 0 1 1 * */
+  test_describe("@yearly / @annually -> 0 0 1 1 *");
   test_crond_set_tm(0, 0, 1, 1, 0);
   test_crond_verify_file_create("/tmp/test-cron-yearly.txt");
   assert(test_file_exists("/tmp/test-cron-annually.txt"));
   assert(remove("/tmp/test-cron-annually.txt") == 0);
 
-  /* @monthly -> 0 0 1 * * */
+  test_describe("@monthly -> 0 0 1 * *");
   test_crond_set_tm(0, 0, 1, 5, 5);
   test_crond_verify_file_create("/tmp/test-cron-monthly.txt");
 
-  /* @weekly -> 0 0 * * 0 */
+  test_describe("@weekly -> 0 0 * * 0");
   test_crond_set_tm(0, 0, 1, 5, 0);
   test_crond_verify_file_create("/tmp/test-cron-weekly.txt");
 
-  /* @daily / @midnight -> 0 0 * * * */
+  test_describe("@daily / @midnight -> 0 0 * * *");
   test_crond_set_tm(0, 0, 2, 2, 2);
   test_crond_verify_file_create("/tmp/test-cron-daily.txt");
   assert(test_file_exists("/tmp/test-cron-midnight.txt"));
   assert(remove("/tmp/test-cron-midnight.txt") == 0);
 
-  /* @hourly -> 0 * * * * */
+  test_describe("@hourly -> 0 * * * *");
   test_crond_set_tm(0, 0, 0, 0, 0);
   test_crond_verify_file_create("/tmp/test-cron-hourly.txt");
 
-  /* @invalid */
+  test_describe("@invalid");
   assert(test_file_exists("/tmp/test-cron-invalid.txt") == false);
 
   g_test_seam_localtime_tm = NULL;
@@ -827,53 +835,53 @@ test_crond_field_ints(void){
 
   test_crontab_add("test/crontabs/field-ints.txt", EXIT_SUCCESS);
 
-  /* (1) Only integers. */
+  test_describe("(1) Only integers");
   test_crond_set_tm(0, 10, 2, 3, 4);
   test_crond_verify_file_create("/tmp/test-cron-field-1.txt");
 
-  /* (2) Commas. */
+  test_describe("(2) Commas");
   for(i = 1; i < 6; i++){
     test_crond_set_tm(1, 2, 3, 4, i);
     test_crond_verify_file_create("/tmp/test-cron-field-2.txt");
   }
 
-  /* (3) Dashes. */
+  test_describe("(3) Dashes");
   for(i = 2; i < 6; i++){
     test_crond_set_tm(i, 3, 4, 5, 6);
     test_crond_verify_file_create("/tmp/test-cron-field-3.txt");
   }
 
-  /* (4) Invalid dash. */
+  test_describe("(4) Invalid dash");
   test_crond_set_tm(1, 1, 1, 1, 1);
   test_crond_fork_main(EXIT_SUCCESS);
   assert(test_file_exists("/tmp/test-cron-field-4.txt") == false);
 
-  /* (5) Value too high. */
+  test_describe("(5) Value too high");
   test_crond_fork_main(EXIT_SUCCESS);
   assert(test_file_exists("/tmp/test-cron-field-5.txt") == false);
 
-  /* (6) Dash value swapped. */
+  test_describe("(6) Dash value swapped");
   for(i = 1; i < 3; i++){
     test_crond_set_tm(i, 2, 3, 4, 5);
     test_crond_verify_file_create("/tmp/test-cron-field-6.txt");
   }
 
-  /* (7) Invalid character. */
+  test_describe("(7) Invalid character");
   test_crond_set_tm(1, 3, 6, 2, 0);
   test_crond_fork_main(EXIT_SUCCESS);
   assert(test_file_exists("/tmp/test-cron-field-7.txt") == false);
 
-  /* (8) Range value too high. */
+  test_describe("(8) Range value too high");
   for(i = 55; i < 60; i++){
     test_crond_set_tm(i, 2, 3, 4, 5);
     test_crond_verify_file_create("/tmp/test-cron-field-8.txt");
   }
 
-  /* (9) Range value the same. */
+  test_describe("(9) Range value the same");
   test_crond_set_tm(2, 3, 4, 5, 6);
   test_crond_verify_file_create("/tmp/test-cron-field-9.txt");
 
-  /* (10) Invalid character. */
+  test_describe("(10) Invalid character");
   test_crond_set_tm(1, 2, 3, 4, 5);
   test_crond_fork_main(EXIT_SUCCESS);
   assert(test_file_exists("/tmp/test-cron-field-10.txt") == false);
@@ -892,40 +900,40 @@ test_crond_simple_file(void){
   test_crontab_add(PATH_CRONTAB_SIMPLE, EXIT_SUCCESS);
   remove(PATH_TMP_SIMPLE);
 
-  /* Parse crontab file - ferror. */
+  test_describe("parse crontab file - ferror");
   g_test_seam_err_ctr_ferror = 0;
   test_crond_fork_main(EXIT_FAILURE);
   g_test_seam_err_ctr_ferror = -1;
 
-  /* Parse crontab file - fclose. */
+  test_describe("parse crontab file - fclose");
   g_test_seam_err_ctr_fclose = 0;
   test_crond_fork_main(EXIT_FAILURE);
   g_test_seam_err_ctr_fclose = -1;
 
-  /* reallocarry call failed when appending jobs. */
+  test_describe("reallocarry call failed when appending jobs");
   g_test_seam_err_ctr_si_mul_size_t = 0;
   test_crond_fork_main(EXIT_FAILURE);
   g_test_seam_err_ctr_si_mul_size_t = -1;
 
-  /* Fail to fork job monitor process. */
+  test_describe("fail to fork job monitor process");
   g_test_seam_err_ctr_fork = 1;
   test_crond_fork_main(EXIT_SUCCESS);
   test_simple_file_verify_remove(false);
   g_test_seam_err_ctr_fork = -1;
 
-  /* Failed to create pipe in job monitor process. */
+  test_describe("failed to create pipe in job monitor process");
   g_test_seam_err_ctr_pipe = 0;
   test_crond_fork_main(EXIT_SUCCESS);
   test_simple_file_verify_remove(false);
   g_test_seam_err_ctr_pipe = -1;
 
-  /* Fail to fork job process. */
+  test_describe("fail to fork job process");
   g_test_seam_err_ctr_fork = 2;
   test_crond_fork_main(EXIT_SUCCESS);
   test_simple_file_verify_remove(false);
   g_test_seam_err_ctr_fork = -1;
 
-  /* Fail to dup2 descriptors in job process. */
+  test_describe("fail to dup2 descriptors in job process");
   for(i = 0; i < 2; i++){
     g_test_seam_err_ctr_dup2 = i;
     test_crond_fork_main(EXIT_SUCCESS);
@@ -933,7 +941,7 @@ test_crond_simple_file(void){
     g_test_seam_err_ctr_dup2 = -1;
   }
 
-  /* Fail to close dup2'ed file descriptors in job process. */
+  test_describe("fail to close dup2'ed file descriptors in job process");
   for(i = 0; i < 4; i++){
     g_test_seam_err_req_fork_jobmon = true;
     g_test_seam_err_ctr_close = i;
@@ -943,7 +951,7 @@ test_crond_simple_file(void){
     g_test_seam_err_req_fork_jobmon = false;
   }
 
-  /* Failed to wait for child process to complete. */
+  test_describe("failed to wait for child process to complete");
   g_test_seam_err_force_errno = ENOMEM;
   g_test_seam_err_ctr_waitpid = 0;
   test_crond_fork_main(EXIT_SUCCESS);
@@ -951,7 +959,7 @@ test_crond_simple_file(void){
   g_test_seam_err_ctr_waitpid = -1;
   g_test_seam_err_force_errno = 0;
 
-  /* Simulate a child waitpid getting interrupted. */
+  test_describe("simulate a child waitpid getting interrupted");
   g_test_seam_err_force_errno = EINTR;
   g_test_seam_err_ctr_waitpid = 0;
   test_crond_fork_main(EXIT_SUCCESS);
@@ -959,7 +967,7 @@ test_crond_simple_file(void){
   g_test_seam_err_ctr_waitpid = -1;
   g_test_seam_err_force_errno = 0;
 
-  /* Use the default shell if not provided in the environment. */
+  test_describe("use the default shell if not provided in the environment");
   old_env = getenv("SHELL");
   assert(old_env);
   assert(unsetenv("SHELL") == 0);
@@ -984,7 +992,7 @@ test_crond_simple_file(void){
   g_test_seam_err_ctr_getpwuid = -1;
   assert(setenv("HOME", old_env, 1) == 0);
 
-  /* Command parsing failed - strndup. */
+  test_describe("command parsing failed - strndup");
   g_test_seam_err_ctr_strndup = 0;
   test_crond_fork_main(EXIT_SUCCESS);
   assert(test_file_exists(PATH_TMP_SIMPLE) == false);
@@ -1002,7 +1010,7 @@ test_crond_all(void){
   test_crond_remove_lock_file();
   test_crontab_remove(EXIT_SUCCESS);
 
-  /* Invalid argument */
+  test_describe("invalid argument");
   g_argc = 2;
   strcpy(g_argv[0], "crond");
   strcpy(g_argv[1], "-a");
@@ -1038,44 +1046,44 @@ test_crond_all(void){
   test_crond_main(EXIT_FAILURE);
   g_test_seam_err_ctr_localtime = -1;
 
-  /* Fail to create lock file. */
+  test_describe("fail to create lock file");
   g_test_seam_err_ctr_open = 0;
   test_crond_main(EXIT_FAILURE);
   g_test_seam_err_ctr_open = -1;
 
-  /* Fail to remove lock file. */
+  test_describe("fail to remove lock file");
   g_test_seam_err_ctr_localtime = 0;
   g_test_seam_err_ctr_remove = 0;
   test_crond_main(EXIT_FAILURE);
   g_test_seam_err_ctr_remove = -1;
   g_test_seam_err_ctr_localtime = -1;
 
-  /* Fail because the lock file still exists (from previous step). */
+  test_describe("fail because the lock file still exists (from previous step)");
   test_crond_main(EXIT_FAILURE);
 
   test_crond_remove_lock_file();
 
-  /* Failed to close lock file. */
+  test_describe("failed to close lock file");
   g_test_seam_err_ctr_close = 0;
   test_crond_fork_main(EXIT_FAILURE);
   g_test_seam_err_ctr_close = -1;
   test_crond_remove_lock_file();
 
-  /* Send a SIGTERM kill signal to crond. */
+  test_describe("send a SIGTERM kill signal to crond");
   pid = test_crond_fork();
   test_sleep_max_file();
   assert(kill(pid, SIGTERM) == 0);
   test_crond_wait(pid, EXIT_SUCCESS);
   test_crond_remove_lock_file();
 
-  /* Send a SIGINT kill signal to crond. */
+  test_describe("send a SIGINT kill signal to crond");
   pid = test_crond_fork();
   test_sleep_max_file();
   assert(kill(pid, SIGINT) == 0);
   test_crond_wait(pid, EXIT_SUCCESS);
   test_crond_remove_lock_file();
 
-  /* stat call failed. */
+  test_describe("stat call failed");
   g_test_seam_err_ctr_stat = 0;
   g_test_seam_err_force_errno = ENOMEM;
   test_crond_fork_main(EXIT_FAILURE);
