@@ -556,6 +556,7 @@ test_crond_wait(const pid_t pid,
 /**
  * Set the localtime() return value.
  *
+ * @param[in] tm_sec  Second.
  * @param[in] tm_min  Minute.
  * @param[in] tm_hour Hour
  * @param[in] tm_mday Day of the month.
@@ -563,7 +564,8 @@ test_crond_wait(const pid_t pid,
  * @param[in] tm_wday Day of the week.
  */
 static void
-test_crond_set_tm(const int tm_min,
+test_crond_set_tm(const int tm_sec,
+                  const int tm_min,
                   const int tm_hour,
                   const int tm_mday,
                   const int tm_mon,
@@ -571,6 +573,7 @@ test_crond_set_tm(const int tm_min,
   static struct tm g_test_tm;
 
   memset(&g_test_tm, 0, sizeof(g_test_tm));
+  g_test_tm.tm_sec  = tm_sec;
   g_test_tm.tm_min  = tm_min;
   g_test_tm.tm_hour = tm_hour;
   g_test_tm.tm_mday = tm_mday;
@@ -627,7 +630,7 @@ test_crond_remove_crontab(void){
 
   test_crontab_add(PATH_CRONTAB_SIMPLE, EXIT_SUCCESS);
 
-  test_crond_set_tm(1, 1, 1, 1, 1);
+  test_crond_set_tm(0, 1, 1, 1, 1, 1);
   pid = test_crond_fork();
   test_sleep_max_file();
   test_simple_file_verify_remove(true);
@@ -648,32 +651,36 @@ static void
 test_crond_stdin_lines(void){
   test_crontab_add("test/crontabs/stdin-lines.txt", EXIT_SUCCESS);
 
-  test_crond_set_tm(1, 1, 1, 1, 1);
+  test_describe("simulate a leap second");
+  test_crond_set_tm(60, 1, 1, 1, 1, 1);
   test_crond_verify_file_create("/tmp/test-cron-stdin-1.txt");
 
-  test_crond_set_tm(2, 2, 2, 2, 2);
+  test_crond_set_tm(0, 1, 1, 1, 1, 1);
+  test_crond_verify_file_create("/tmp/test-cron-stdin-1.txt");
+
+  test_crond_set_tm(0, 2, 2, 2, 2, 2);
   test_crond_verify_file_create("/tmp/test-cron-stdin-1.txt");
   assert(test_file_exists("/tmp/test-cron-stdin-2.txt"));
   assert(remove("/tmp/test-cron-stdin-2.txt") == 0);
 
-  test_crond_set_tm(3, 3, 3, 3, 3);
+  test_crond_set_tm(0, 3, 3, 3, 3, 3);
   test_crond_verify_file_create("/tmp/test-cron-stdin-1.txt");
   assert(test_file_exists("/tmp/test-cron-stdin-2.txt"));
   assert(remove("/tmp/test-cron-stdin-2.txt") == 0);
   assert(test_file_exists("/tmp/test-cron-stdin-3.txt"));
   assert(remove("/tmp/test-cron-stdin-3.txt") == 0);
 
-  test_crond_set_tm(4, 4, 4, 4, 4);
+  test_crond_set_tm(0, 4, 4, 4, 4, 4);
   test_crond_verify_file_create("/tmp/test-cron-stdin-%\\.txt");
   assert(test_file_exists("/tmp/test-cron-stdin-2.txt"));
   assert(remove("/tmp/test-cron-stdin-2.txt") == 0);
 
-  test_crond_set_tm(5, 5, 5, 5, 5);
+  test_crond_set_tm(0, 5, 5, 5, 5, 5);
   test_crond_fork_main(EXIT_SUCCESS);
   assert(test_file_exists("/tmp/test-cron-stdin-1.txt") == false);
 
   g_test_seam_err_ctr_strdup = 1;
-  test_crond_set_tm(1, 1, 1, 1, 1);
+  test_crond_set_tm(0, 1, 1, 1, 1, 1);
   test_crond_fork_main(EXIT_SUCCESS);
   assert(test_file_exists("/tmp/test-cron-stdin-1.txt") == false);
   g_test_seam_err_ctr_strdup = -1;
@@ -681,7 +688,7 @@ test_crond_stdin_lines(void){
   test_describe("failed to write data to child process");
   g_test_seam_err_force_errno = ENOMEM;
   g_test_seam_err_ctr_write = 0;
-  test_crond_set_tm(1, 1, 1, 1, 1);
+  test_crond_set_tm(0, 1, 1, 1, 1, 1);
   test_crond_fork_main(EXIT_SUCCESS);
   assert(test_file_exists("/tmp/test-cron-stdin-1.txt") == false);
   g_test_seam_err_ctr_write = -1;
@@ -690,7 +697,7 @@ test_crond_stdin_lines(void){
   test_describe("simulate an interrupt during write but allow the next write to proceed");
   g_test_seam_err_force_errno = EINTR;
   g_test_seam_err_ctr_write = 0;
-  test_crond_set_tm(1, 1, 1, 1, 1);
+  test_crond_set_tm(0, 1, 1, 1, 1, 1);
   test_crond_verify_file_create("/tmp/test-cron-stdin-1.txt");
   g_test_seam_err_ctr_write = -1;
   g_test_seam_err_force_errno = 0;
@@ -710,7 +717,7 @@ test_crond_mailx(void){
 
   test_crontab_add("test/crontabs/mailx.txt", EXIT_SUCCESS);
 
-  test_crond_set_tm(4, 4, 4, 4, 4);
+  test_crond_set_tm(0, 4, 4, 4, 4, 4);
 
   test_crond_verify_file_create("/tmp/test-cron-echo-output.txt");
 
@@ -794,27 +801,27 @@ test_crond_special_strings(void){
   test_crontab_add("test/crontabs/special-strings.txt", EXIT_SUCCESS);
 
   test_describe("@yearly / @annually -> 0 0 1 1 *");
-  test_crond_set_tm(0, 0, 1, 1, 0);
+  test_crond_set_tm(0, 0, 0, 1, 1, 0);
   test_crond_verify_file_create("/tmp/test-cron-yearly.txt");
   assert(test_file_exists("/tmp/test-cron-annually.txt"));
   assert(remove("/tmp/test-cron-annually.txt") == 0);
 
   test_describe("@monthly -> 0 0 1 * *");
-  test_crond_set_tm(0, 0, 1, 5, 5);
+  test_crond_set_tm(0, 0, 0, 1, 5, 5);
   test_crond_verify_file_create("/tmp/test-cron-monthly.txt");
 
   test_describe("@weekly -> 0 0 * * 0");
-  test_crond_set_tm(0, 0, 1, 5, 0);
+  test_crond_set_tm(0, 0, 0, 1, 5, 0);
   test_crond_verify_file_create("/tmp/test-cron-weekly.txt");
 
   test_describe("@daily / @midnight -> 0 0 * * *");
-  test_crond_set_tm(0, 0, 2, 2, 2);
+  test_crond_set_tm(0, 0, 0, 2, 2, 2);
   test_crond_verify_file_create("/tmp/test-cron-daily.txt");
   assert(test_file_exists("/tmp/test-cron-midnight.txt"));
   assert(remove("/tmp/test-cron-midnight.txt") == 0);
 
   test_describe("@hourly -> 0 * * * *");
-  test_crond_set_tm(0, 0, 1, 1, 0);
+  test_crond_set_tm(0, 0, 0, 1, 1, 0);
   test_crond_verify_file_create("/tmp/test-cron-hourly.txt");
 
   test_describe("@invalid");
@@ -836,23 +843,23 @@ test_crond_field_ints(void){
   test_crontab_add("test/crontabs/field-ints.txt", EXIT_SUCCESS);
 
   test_describe("(1) Only integers");
-  test_crond_set_tm(0, 10, 2, 3, 4);
+  test_crond_set_tm(0, 0, 10, 2, 3, 4);
   test_crond_verify_file_create("/tmp/test-cron-field-1.txt");
 
   test_describe("(2) Commas");
   for(i = 1; i < 6; i++){
-    test_crond_set_tm(1, 2, 3, 4, i);
+    test_crond_set_tm(0, 1, 2, 3, 4, i);
     test_crond_verify_file_create("/tmp/test-cron-field-2.txt");
   }
 
   test_describe("(3) Dashes");
   for(i = 2; i < 6; i++){
-    test_crond_set_tm(i, 3, 4, 5, 6);
+    test_crond_set_tm(0, i, 3, 4, 5, 6);
     test_crond_verify_file_create("/tmp/test-cron-field-3.txt");
   }
 
   test_describe("(4) Invalid dash");
-  test_crond_set_tm(1, 1, 1, 1, 1);
+  test_crond_set_tm(0, 1, 1, 1, 1, 1);
   test_crond_fork_main(EXIT_SUCCESS);
   assert(test_file_exists("/tmp/test-cron-field-4.txt") == false);
 
@@ -862,27 +869,27 @@ test_crond_field_ints(void){
 
   test_describe("(6) Dash value swapped");
   for(i = 1; i < 3; i++){
-    test_crond_set_tm(i, 2, 3, 4, 5);
+    test_crond_set_tm(0, i, 2, 3, 4, 5);
     test_crond_verify_file_create("/tmp/test-cron-field-6.txt");
   }
 
   test_describe("(7) Invalid character");
-  test_crond_set_tm(1, 3, 6, 2, 0);
+  test_crond_set_tm(0, 1, 3, 6, 2, 0);
   test_crond_fork_main(EXIT_SUCCESS);
   assert(test_file_exists("/tmp/test-cron-field-7.txt") == false);
 
   test_describe("(8) Range value too high");
   for(i = 55; i < 60; i++){
-    test_crond_set_tm(i, 2, 3, 4, 5);
+    test_crond_set_tm(0, i, 2, 3, 4, 5);
     test_crond_verify_file_create("/tmp/test-cron-field-8.txt");
   }
 
   test_describe("(9) Range value the same");
-  test_crond_set_tm(2, 3, 4, 5, 6);
+  test_crond_set_tm(0, 2, 3, 4, 5, 6);
   test_crond_verify_file_create("/tmp/test-cron-field-9.txt");
 
   test_describe("(10) Invalid character");
-  test_crond_set_tm(1, 2, 3, 4, 5);
+  test_crond_set_tm(0, 1, 2, 3, 4, 5);
   test_crond_fork_main(EXIT_SUCCESS);
   assert(test_file_exists("/tmp/test-cron-field-10.txt") == false);
 

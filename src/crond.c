@@ -1184,6 +1184,9 @@ crond_main(const int argc,
     if(crond_should_exit(&crond) == false){
       /* tm_sec = [0,60] */
       sleep_sec = 60 - (unsigned int)crond.tm->tm_sec;
+      if(sleep_sec == 0){
+        sleep_sec += 1;
+      }
       crond_verbose(&crond, "sleeping for %u seconds", sleep_sec);
       sleep(sleep_sec);
     }
