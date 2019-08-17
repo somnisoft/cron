@@ -492,10 +492,10 @@ crond_crontab_parse_line(struct crond *const crond,
       if(strncmp(cmd_special, STR_YEARLY  , STRLEN_YEARLY  ) == 0 ||
          strncmp(cmd_special, STR_ANNUALLY, STRLEN_ANNUALLY) == 0){
         /* 0 0 1 1 * */
-        crond_set_field_range(job.minute , 0, 1                  );
-        crond_set_field_range(job.hour   , 0, 1                  );
-        crond_set_field_range(job.day    , 0, 1                  );
-        crond_set_field_range(job.month  , 0, 1                  );
+        crond_set_field_range(job.minute , 0, 0                  );
+        crond_set_field_range(job.hour   , 0, 0                  );
+        crond_set_field_range(job.day    , 0, 0                  );
+        crond_set_field_range(job.month  , 0, 0                  );
         crond_set_field_range(job.weekday, 0, sizeof(job.weekday));
         if(cmd_special[0] == STR_YEARLY[0]){
           i += STRLEN_YEARLY;
@@ -506,27 +506,27 @@ crond_crontab_parse_line(struct crond *const crond,
       }
       else if(strncmp(cmd_special, STR_MONTHLY, STRLEN_MONTHLY) == 0){
         /* 0 0 1 * * */
-        crond_set_field_range(job.minute , 0, 1                  );
-        crond_set_field_range(job.hour   , 0, 1                  );
-        crond_set_field_range(job.day    , 0, 1                  );
+        crond_set_field_range(job.minute , 0, 0                  );
+        crond_set_field_range(job.hour   , 0, 0                  );
+        crond_set_field_range(job.day    , 0, 0                  );
         crond_set_field_range(job.month  , 0, sizeof(job.month)  );
         crond_set_field_range(job.weekday, 0, sizeof(job.weekday));
         i += STRLEN_MONTHLY;
       }
       else if(strncmp(cmd_special, STR_WEEKLY, STRLEN_WEEKLY) == 0){
         /* 0 0 * * 0 */
-        crond_set_field_range(job.minute , 0, 1                );
-        crond_set_field_range(job.hour   , 0, 1                );
+        crond_set_field_range(job.minute , 0, 0                );
+        crond_set_field_range(job.hour   , 0, 0                );
         crond_set_field_range(job.day    , 0, sizeof(job.day)  );
         crond_set_field_range(job.month  , 0, sizeof(job.month));
-        crond_set_field_range(job.weekday, 0, 1                );
+        crond_set_field_range(job.weekday, 0, 0                );
         i += STRLEN_WEEKLY;
       }
       else if(strncmp(cmd_special, STR_DAILY   , STRLEN_DAILY) == 0 ||
               strncmp(cmd_special, STR_MIDNIGHT, STRLEN_MIDNIGHT) == 0){
         /* 0 0 * * * */
-        crond_set_field_range(job.minute , 0, 1                  );
-        crond_set_field_range(job.hour   , 0, 1                  );
+        crond_set_field_range(job.minute , 0, 0                  );
+        crond_set_field_range(job.hour   , 0, 0                  );
         crond_set_field_range(job.day    , 0, sizeof(job.day)    );
         crond_set_field_range(job.month  , 0, sizeof(job.month)  );
         crond_set_field_range(job.weekday, 0, sizeof(job.weekday));
@@ -539,7 +539,7 @@ crond_crontab_parse_line(struct crond *const crond,
       }
       else if(strncmp(cmd_special, STR_HOURLY, STRLEN_HOURLY) == 0){
         /* 0 * * * * */
-        crond_set_field_range(job.minute , 0, 1                  );
+        crond_set_field_range(job.minute , 0, 0                  );
         crond_set_field_range(job.hour   , 0, sizeof(job.hour)   );
         crond_set_field_range(job.day    , 0, sizeof(job.day)    );
         crond_set_field_range(job.month  , 0, sizeof(job.month)  );

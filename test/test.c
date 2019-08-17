@@ -814,7 +814,7 @@ test_crond_special_strings(void){
   assert(remove("/tmp/test-cron-midnight.txt") == 0);
 
   test_describe("@hourly -> 0 * * * *");
-  test_crond_set_tm(0, 0, 0, 0, 0);
+  test_crond_set_tm(0, 0, 1, 1, 0);
   test_crond_verify_file_create("/tmp/test-cron-hourly.txt");
 
   test_describe("@invalid");
